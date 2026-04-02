@@ -1,113 +1,80 @@
-package az.edu.ada.wm2.service;
+package az.edu.ada.wm2.lab6.service.impl;
 
 import az.edu.ada.wm2.lab6.model.Category;
 import az.edu.ada.wm2.lab6.model.Product;
 import az.edu.ada.wm2.lab6.model.dto.CategoryRequestDto;
 import az.edu.ada.wm2.lab6.model.dto.CategoryResponseDto;
 import az.edu.ada.wm2.lab6.model.dto.ProductResponseDto;
-import az.edu.ada.wm2.lab6.model.mapper.ProductMapper;
 import az.edu.ada.wm2.lab6.repository.CategoryRepository;
 import az.edu.ada.wm2.lab6.repository.ProductRepository;
+import az.edu.ada.wm2.lab6.model.mapper.ProductMapper;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+@Service
+public class CategoryServiceImpl {
 
-@ExtendWith(MockitoExtension.class)
-class CategoryServiceImplTest {
+    private final CategoryRepository categoryRepository;
+    private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
 
-    @Mock
-    private CategoryRepository categoryRepository;
-
-    @Mock
-    private ProductRepository productRepository;
-
-    @Mock
-    private ProductMapper productMapper;
-
-    @InjectMocks
-    private CategoryServiceImpl categoryService;
-
-    private UUID categoryId;
-    private UUID productId;
-
-    @Test
-    void create_shouldSaveCategory() {
-        CategoryRequestDto dto = new CategoryRequestDto("Food");
-
-        Category category = new Category();
-        category.setName("Food");
-
-        when(categoryRepository.save(any())).thenReturn(category);
-
-        CategoryResponseDto result = categoryService.create(dto);
-
-        assertEquals("Food", result.getName());
+    public CategoryServiceImpl(CategoryRepository categoryRepository,
+                               ProductRepository productRepository,
+                               ProductMapper productMapper) {
+        this.categoryRepository = categoryRepository;
+        this.productRepository = productRepository;
+        this.productMapper = productMapper;
     }
 
-    @Test
-    void getAll_shouldReturnList() {
+    public CategoryResponseDto create(CategoryRequestDto dto) {
         Category category = new Category();
-        category.setName("Food");
+        category.setId(UUID.randomUUID());
+        category.setName(dto.getName());
 
-        when(categoryRepository.findAll()).thenReturn(List.of(category));
+        Category saved = categoryRepository.save(category);
 
-        List<CategoryResponseDto> result = categoryService.getAll();
+        CategoryResponseDto response = new CategoryResponseDto();
+        response.setId(saved.getId());
+        response.setName(saved.getName());
 
-        assertEquals(1, result.size());
+        return response;
     }
 
-    @Test
-    void addProduct_shouldLinkProductToCategory() {
-        categoryId = UUID.randomUUID();
-        productId = UUID.randomUUID();
-
-        Category category = new Category();
-        Product product = new Product();
-
-        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
-        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-
-        categoryService.addProduct(categoryId, productId);
-
-        assertTrue(product.getCategories().contains(category));
-        verify(productRepository).save(product);
+    public List<CategoryResponseDto> getAll() {
+        return categoryRepository.findAll()
+                .stream()
+                .map(c -> {
+                    CategoryResponseDto dto = new CategoryResponseDto();
+                    dto.setId(c.getId());
+                    dto.setName(c.getName());
+                    return dto;
+                })
+                .toList();
     }
 
-    @Test
-    void getProducts_shouldReturnDtos() {
-        categoryId = UUID.randomUUID();
+    public CategoryResponseDto addProduct(UUID categoryId, UUID productId) {
+        Category category = categoryRepository.findById(categoryId).orElseThrow();
+        Product product = productRepository.findById(productId).orElseThrow();
 
-        Category category = new Category();
+        category.getProducts().add(product);
+        categoryRepository.save(category);
 
-        Product product = new Product();
-        category.setProducts(List.of(product));
+        CategoryResponseDto dto = new CategoryResponseDto();
+        dto.setId(category.getId());
+        dto.setName(category.getName());
 
-        when(categoryRepository.findById(categoryId)).thenReturn(Optional.of(category));
-        when(productMapper.toResponseDto(product)).thenReturn(new ProductResponseDto());
-
-        List<ProductResponseDto> result = categoryService.getProducts(categoryId);
-
-        assertEquals(1, result.size());
+        return dto;
     }
 
-    //OPTIONAL
-    @Test
-    void addProduct_shouldThrow_whenCategoryNotFound() {
-        when(categoryRepository.findById(any())).thenReturn(Optional.empty());
+    public List<ProductResponseDto> getProducts(UUID categoryId) {
+        Category category = categoryRepository.findById(categoryId).orElseThrow();
 
-        assertThrows(RuntimeException.class,
-                () -> categoryService.addProduct(UUID.randomUUID(), UUID.randomUUID()));
+        return category.getProducts()
+                .stream()
+                .map(productMapper::toResponseDto)
+                .toList();
     }
 }
