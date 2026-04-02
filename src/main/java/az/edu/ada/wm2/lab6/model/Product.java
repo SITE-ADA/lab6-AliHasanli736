@@ -1,16 +1,34 @@
 package az.edu.ada.wm2.lab6.model;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
+@Entity
 public class Product {
+
+    @Id
     private UUID id;
     private String productName;
     private BigDecimal price;
     private LocalDate expirationDate;
 
-    // Constructors
+    @ManyToMany
+    @JoinTable(
+            name = "product_category",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "category_id")
+    )
+    private Set<Category> categories = new HashSet<>();
+
     public Product() {
     }
 
@@ -28,7 +46,6 @@ public class Product {
         this.expirationDate = expirationDate;
     }
 
-    // Getters and Setters
     public UUID getId() {
         return id;
     }
@@ -61,13 +78,11 @@ public class Product {
         this.expirationDate = expirationDate;
     }
 
-    @Override
-    public String toString() {
-        return "Product{" +
-                "id=" + id +
-                ", productName='" + productName + '\'' +
-                ", price=" + price +
-                ", expirationDate=" + expirationDate +
-                '}';
+    public Set<Category> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(Set<Category> categories) {
+        this.categories = categories;
     }
 }
